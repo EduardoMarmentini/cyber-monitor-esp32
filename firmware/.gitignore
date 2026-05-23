@@ -1,0 +1,27 @@
+# PlatformIO
+.pio/
+.vscode/
+.vscode-server/
+.gcc/
+
+# Build artifacts
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+
+# IDEs
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Environment
+.env
