@@ -1,13 +1,13 @@
 # TASKS — Fase 1: Setup, Configuração & WiFi Scanner
 
-**Status:** ⏳ Não iniciado  
+**Status:** ✅ Completo  
 **Total Tasks:** 8 principais + subtasks
 
 ---
 
 ## Task 1: Inicializar Projeto PlatformIO
 
-**Status:** `[ ] Not Started`  
+**Status:** `[x] Completed`  
 **Prioridade:** 🔴 CRÍTICA (bloqueia tudo)  
 **Estimado:** 2 horas
 
@@ -15,12 +15,12 @@
 Criar novo projeto PlatformIO com Arduino Framework para ESP32dev.
 
 ### Subtasks
-- [ ] Criar diretório `/firmware` na raiz do repositório
-- [ ] Adicionar `platformio.ini` com config ESP32dev
-- [ ] Adicionar libraries: `me-no-dev/ESP Async WebServer`, `bblanchon/ArduinoJson@^6.19.0`, `AsyncTCP`
-- [ ] Validar `platformio run` compila sem erros
-- [ ] Criar diretório structure: `src/`, `include/`, `lib/`, `models/`, `utils/`
-- [ ] Git commit: `init(platform): platformio setup for esp32`
+- [x] Criar diretório `/firmware` na raiz do repositório
+- [x] Adicionar `platformio.ini` com config ESP32dev
+- [x] Adicionar libraries: `me-no-dev/ESP Async WebServer`, `bblanchon/ArduinoJson@^6.19.0`, `AsyncTCP`
+- [x] Validar `platformio run` compila sem erros
+- [x] Criar diretório structure: `src/`, `include/`, `lib/`, `models/`, `utils/`
+- [x] Git commit: `init(platform): platformio setup for esp32`
 
 ### Critério de Aceitação
 - ✓ `platformio.ini` existe e está válido

@@ -4,11 +4,12 @@
 
 class ApiRoutes {
 public:
-    // Initialize API routes
     static void begin(AsyncWebServer& server);
-    
+
 private:
-    // Handlers
     static void handleRoot(AsyncWebServerRequest* request);
     static void handleWifiApi(AsyncWebServerRequest* request);
+    static void handleStatsApi(AsyncWebServerRequest* request);
+    static void handleConfigWifiGet(AsyncWebServerRequest* request);
+    static void handleConfigWifiPost(AsyncWebServerRequest* request);
 };

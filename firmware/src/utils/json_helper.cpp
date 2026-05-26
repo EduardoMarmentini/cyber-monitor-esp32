@@ -2,13 +2,13 @@
 
 String JsonHelper::createWifiResponse(const std::vector<WifiNetwork>& networks) {
     DynamicJsonDocument doc(4096);
-    
+
     doc["success"] = true;
     doc["timestamp"] = millis();
     doc["count"] = networks.size();
-    
+
     JsonArray dataArray = doc.createNestedArray("data");
-    
+
     for (const auto& network : networks) {
         JsonObject obj = dataArray.createNestedObject();
         obj["ssid"] = network.ssid;
@@ -17,7 +17,38 @@ String JsonHelper::createWifiResponse(const std::vector<WifiNetwork>& networks) 
         obj["channel"] = network.channel;
         obj["encryption"] = network.encryption;
     }
-    
+
+    String output;
+    serializeJson(doc, output);
+    return output;
+}
+
+String JsonHelper::createStatsResponse(int wifiCount, int bleCount, unsigned long uptime) {
+    DynamicJsonDocument doc(256);
+
+    doc["success"] = true;
+    JsonObject data = doc.createNestedObject("data");
+    data["wifiNetworks"] = wifiCount;
+    data["bleDevices"] = bleCount;
+    data["uptime"] = uptime;
+
+    String output;
+    serializeJson(doc, output);
+    return output;
+}
+
+String JsonHelper::createEventPayload(const char* event, const WifiNetwork& network) {
+    DynamicJsonDocument doc(512);
+
+    doc["event"] = event;
+    doc["timestamp"] = millis();
+    JsonObject payload = doc.createNestedObject("payload");
+    payload["ssid"] = network.ssid;
+    payload["bssid"] = network.bssid;
+    payload["rssi"] = network.rssi;
+    payload["channel"] = network.channel;
+    payload["encryption"] = network.encryption;
+
     String output;
     serializeJson(doc, output);
     return output;

@@ -5,6 +5,7 @@
 std::vector<WifiNetwork> WifiScanner::networks;
 bool WifiScanner::scanning = false;
 unsigned long WifiScanner::lastScanTime = 0;
+ScanCallback WifiScanner::scanCallback = nullptr;
 
 void WifiScanner::begin() {
     LOG_INFO("WiFi Scanner initialized");
@@ -12,30 +13,28 @@ void WifiScanner::begin() {
 
 void WifiScanner::scan() {
     if (scanning) {
-        return;  // Already scanning
+        return;
     }
-    
+
     scanning = true;
-    LOG_INFO("WiFi scan started");
-    
-    // Perform the scan
+    LOG_DEBUG("WiFi scan started");
+
     int n = WiFi.scanNetworks();
-    
+
     networks.clear();
-    
+
     if (n == 0) {
         LOG_WARN("No WiFi networks found");
     } else {
         LOG_INFO("WiFi scan complete: %d networks found", n);
-        
+
         for (int i = 0; i < n; i++) {
             WifiNetwork network;
             network.ssid = WiFi.SSID(i);
             network.bssid = WiFi.BSSIDstr(i);
             network.rssi = WiFi.RSSI(i);
             network.channel = WiFi.channel(i);
-            
-            // Map encryption type
+
             uint8_t security = WiFi.encryptionType(i);
             switch (security) {
                 case 0: network.encryption = "Open"; break;
@@ -45,21 +44,25 @@ void WifiScanner::scan() {
                 case 4: network.encryption = "WPA3"; break;
                 default: network.encryption = "Unknown"; break;
             }
-            
+
             networks.push_back(network);
         }
-        
+
         printNetworks();
     }
-    
+
     WiFi.scanDelete();
     lastScanTime = millis();
     scanning = false;
+
+    if (scanCallback) {
+        scanCallback(networks);
+    }
 }
 
 void WifiScanner::printNetworks() {
     for (const auto& network : networks) {
-        LOG_INFO("  SSID: %s | RSSI: %d dBm | Channel: %d | Encryption: %s",
-                 network.ssid.c_str(), network.rssi, network.channel, network.encryption.c_str());
+        LOG_DEBUG("  SSID: %s | RSSI: %d dBm | Channel: %d | Encryption: %s",
+                  network.ssid.c_str(), network.rssi, network.channel, network.encryption.c_str());
     }
 }

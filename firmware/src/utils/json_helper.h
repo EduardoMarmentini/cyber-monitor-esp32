@@ -7,9 +7,10 @@
 
 class JsonHelper {
 public:
-    // Creates JSON response for WiFi networks
     static String createWifiResponse(const std::vector<WifiNetwork>& networks);
-    
+    static String createStatsResponse(int wifiCount, int bleCount, unsigned long uptime);
+    static String createEventPayload(const char* event, const WifiNetwork& network);
+
 private:
     static String getEncryptionType(int encryptionType);
 };
