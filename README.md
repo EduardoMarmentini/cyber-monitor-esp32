@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="cyber-monitor-logo-repo.png" width="300" />
+</p>
+
 # ESP32 Cyber Monitor — Firmware SDD
 
 # Visão Geral
