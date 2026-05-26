@@ -1,0 +1,94 @@
+#include "ble_scanner.h"
+#include "logger.h"
+#include <BLEDevice.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
+
+bool BleScanner::initialized = false;
+
+// Global callback results
+static std::vector<BleDevice> scannedDevices;
+
+class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
+public:
+    void onResult(BLEAdvertisedDevice advertisedDevice) {
+        BleDevice device;
+
+        // Get device name
+        if (advertisedDevice.haveName()) {
+            device.name = String(advertisedDevice.getName().c_str());
+        } else {
+            device.name = "Unknown";
+        }
+
+        // Get MAC address in XX:XX:XX:XX:XX:XX format
+        device.mac = advertisedDevice.getAddress().toString().c_str();
+
+        // Get RSSI signal strength
+        device.rssi = advertisedDevice.getRSSI();
+
+        // Get service UUID if available
+        if (advertisedDevice.haveServiceUUID()) {
+            device.uuid = String(advertisedDevice.getServiceUUID().toString().c_str());
+        } else {
+            device.uuid = "N/A";
+        }
+
+        // Check if device already in results (avoid duplicates)
+        bool found = false;
+        for (const auto& dev : scannedDevices) {
+            if (dev.mac == device.mac) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            scannedDevices.push_back(device);
+        }
+    }
+};
+
+void BleScanner::init() {
+    if (initialized) {
+        LOG_INFO("BLE already initialized");
+        return;
+    }
+
+    LOG_INFO("Initializing BLE...");
+    BLEDevice::init("ESP32_Cyber_Monitor");
+    initialized = true;
+    LOG_INFO("BLE initialized successfully");
+}
+
+std::vector<BleDevice> BleScanner::scan(int durationSeconds) {
+    if (!initialized) {
+        LOG_ERROR("BLE not initialized. Call BleScanner::init() first");
+        return std::vector<BleDevice>();
+    }
+
+    LOG_INFO("Starting BLE scan for %d seconds...", durationSeconds);
+    scannedDevices.clear();
+
+    BLEScan* pBLEScan = BLEDevice::getScan();
+    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+    pBLEScan->setActiveScan(true);  // Active scan
+    pBLEScan->setInterval(100);
+    pBLEScan->setWindow(99);
+
+    BLEScanResults scanResults = pBLEScan->start(durationSeconds, false);
+    pBLEScan->clearResults();
+
+    LOG_INFO("BLE scan complete: %d devices found", scannedDevices.size());
+
+    return scannedDevices;
+}
+
+String BleScanner::getDeviceNameFromAddress(String address) {
+    for (const auto& device : scannedDevices) {
+        if (device.mac == address) {
+            return device.name;
+        }
+    }
+    return "Unknown";
+}

@@ -5,6 +5,7 @@
 #include "logger.h"
 #include "wifi_scanner.h"
 #include "services/stats_service.h"
+#include "services/ble_service.h"
 #include "utils/json_helper.h"
 
 void ApiRoutes::begin(AsyncWebServer& server) {
@@ -16,6 +17,10 @@ void ApiRoutes::begin(AsyncWebServer& server) {
 
     server.on("/api/wifi", HTTP_GET, [](AsyncWebServerRequest* request) {
         handleWifiApi(request);
+    });
+
+    server.on("/api/ble", HTTP_GET, [](AsyncWebServerRequest* request) {
+        handleBleApi(request);
     });
 
     server.on("/api/stats", HTTP_GET, [](AsyncWebServerRequest* request) {
@@ -43,6 +48,16 @@ void ApiRoutes::handleWifiApi(AsyncWebServerRequest* request) {
 
     const auto& networks = WifiScanner::getNetworks();
     String response = JsonHelper::createWifiResponse(networks);
+
+    request->send(200, "application/json", response);
+}
+
+void ApiRoutes::handleBleApi(AsyncWebServerRequest* request) {
+    LOG_DEBUG("GET /api/ble");
+
+    BleService& bleService = BleService::getInstance();
+    const auto& devices = bleService.getCachedDevices();
+    String response = JsonHelper::createBleResponse(devices);
 
     request->send(200, "application/json", response);
 }
@@ -108,7 +123,11 @@ void ApiRoutes::handleConfigWifiPost(AsyncWebServerRequest* request) {
     LOG_INFO("WiFi config saved to NVS. SSID: %s", ssid);
 
     WiFi.disconnect();
-    WiFi.begin(ssid, password);
+    if (strlen(password) == 0) {
+        WiFi.begin(ssid);
+    } else {
+        WiFi.begin(ssid, password);
+    }
 
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < WIFI_CONNECT_RETRIES) {

@@ -3,11 +3,13 @@
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 #include "models/wifi_network.h"
+#include "models/ble_device.h"
 
 class WebSocketServer {
 public:
     static void begin(AsyncWebServer& server);
     static void broadcastEvent(const char* event, const WifiNetwork& network);
+    static void broadcastBleEvent(const char* event, const BleDevice& device);
     static size_t getClientCount() {
         return clientCount;
     }

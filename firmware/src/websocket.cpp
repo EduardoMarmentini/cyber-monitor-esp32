@@ -38,3 +38,9 @@ void WebSocketServer::broadcastEvent(const char* event, const WifiNetwork& netwo
     ws.textAll(payload);
     LOG_DEBUG("Event broadcast: %s - %s", event, network.ssid.c_str());
 }
+
+void WebSocketServer::broadcastBleEvent(const char* event, const BleDevice& device) {
+    String payload = JsonHelper::createBleEventPayload(event, device);
+    ws.textAll(payload);
+    LOG_INFO("BLE_UPDATE event sent (Device: %s, RSSI: %d)", device.name.c_str(), device.rssi);
+}

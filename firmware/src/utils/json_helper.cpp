@@ -23,6 +23,28 @@ String JsonHelper::createWifiResponse(const std::vector<WifiNetwork>& networks) 
     return output;
 }
 
+String JsonHelper::createBleResponse(const std::vector<BleDevice>& devices) {
+    DynamicJsonDocument doc(4096);
+
+    doc["success"] = true;
+    doc["timestamp"] = millis();
+    doc["count"] = devices.size();
+
+    JsonArray dataArray = doc.createNestedArray("data");
+
+    for (const auto& device : devices) {
+        JsonObject obj = dataArray.createNestedObject();
+        obj["name"] = device.name;
+        obj["mac"] = device.mac;
+        obj["rssi"] = device.rssi;
+        obj["uuid"] = device.uuid;
+    }
+
+    String output;
+    serializeJson(doc, output);
+    return output;
+}
+
 String JsonHelper::createStatsResponse(int wifiCount, int bleCount, unsigned long uptime) {
     DynamicJsonDocument doc(256);
 
@@ -48,6 +70,22 @@ String JsonHelper::createEventPayload(const char* event, const WifiNetwork& netw
     payload["rssi"] = network.rssi;
     payload["channel"] = network.channel;
     payload["encryption"] = network.encryption;
+
+    String output;
+    serializeJson(doc, output);
+    return output;
+}
+
+String JsonHelper::createBleEventPayload(const char* event, const BleDevice& device) {
+    DynamicJsonDocument doc(512);
+
+    doc["event"] = event;
+    doc["timestamp"] = millis();
+    JsonObject payload = doc.createNestedObject("payload");
+    payload["name"] = device.name;
+    payload["mac"] = device.mac;
+    payload["rssi"] = device.rssi;
+    payload["uuid"] = device.uuid;
 
     String output;
     serializeJson(doc, output);
