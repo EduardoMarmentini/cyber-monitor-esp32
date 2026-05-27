@@ -1,5 +1,6 @@
 #include <Preferences.h>
 #include <WiFi.h>
+#include <ESPmDNS.h>
 #include "config.h"
 #include "api_routes.h"
 #include "logger.h"
@@ -140,6 +141,13 @@ void ApiRoutes::handleConfigWifiPost(AsyncWebServerRequest* request) {
     res["message"] = WiFi.status() == WL_CONNECTED
         ? "Connected to " + String(ssid)
         : "Failed to connect to " + String(ssid);
+    if (WiFi.status() == WL_CONNECTED) {
+        res["ip"] = WiFi.localIP().toString();
+        MDNS.end();
+        if (MDNS.begin(MDNS_HOSTNAME)) {
+            MDNS.addService("http", "tcp", API_PORT);
+        }
+    }
 
     String response;
     serializeJson(res, response);

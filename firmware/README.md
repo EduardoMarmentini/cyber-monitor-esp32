@@ -1,165 +1,143 @@
-# Cyber Monitor ESP32 — Firmware
+# ESP32 Cyber Monitor
 
-ESP32 firmware for WiFi and BLE scanning with REST API and WebSocket real-time updates.
+Firmware para ESP32 que escaneia redes WiFi e dispositivos BLE, expondo dados via API REST e WebSocket em tempo real.
 
-## Features (Fase 1)
+## Funcionalidades
 
-- ✓ Automatic WiFi connection
-- ✓ WiFi network scanner (periodic scans)
-- ✓ REST API endpoint `/api/wifi` returning JSON
-- ✓ Serial logging with timestamps (current phase)
+- Scanner WiFi (SSID, BSSID, RSSI, canal, criptografia)
+- Scanner BLE (nome, MAC, RSSI, UUID)
+- API REST com endpoints JSON
+- WebSocket para eventos em tempo real
+- Cache de dispositivos (evita duplicatas)
+- Configuração dinâmica de WiFi via API (persiste em NVS)
+- Watchdog com auto-reset
+- Logger configurável com níveis
 
-## Hardware Requirements
+## Endpoints
 
-- **ESP32 Dev Kit** (or compatible)
-- **USB Micro-B cable** for programming
-- **WiFi network** with known SSID and password
+| Rota | Método | Descrição |
+|------|--------|-----------|
+| `/` | GET | Health check |
+| `/api/wifi` | GET | Lista redes WiFi detectadas |
+| `/api/ble` | GET | Lista dispositivos BLE detectados |
+| `/api/stats` | GET | Estatísticas do dispositivo |
+| `/api/config/wifi` | GET | SSID atual configurado |
+| `/api/config/wifi` | POST | Altera SSID/senha WiFi |
+| `/ws` | WebSocket | Eventos em tempo real |
 
-## Installation
+## Exemplos de Uso
 
-### Prerequisites
-
-1. Install VS Code: https://code.visualstudio.com/
-2. Install PlatformIO Extension in VS Code
-3. Clone this repository
-
-### Setup
-
+### Listar redes WiFi
 ```bash
-cd firmware
-# Edit config.h with your WiFi SSID and password
-nano src/config.h
+curl http://esp32-ip/api/wifi | jq .
 ```
 
-Update these lines:
-```cpp
-#define WIFI_SSID "YOUR_NETWORK_NAME"
-#define WIFI_PASSWORD "YOUR_PASSWORD"
-```
-
-## Build & Flash
-
-### Build only
+### Listar dispositivos BLE
 ```bash
-platformio run
+curl http://esp32-ip/api/ble | jq .
 ```
 
-### Build and Flash to ESP32
+### Estatísticas
 ```bash
-platformio run --target upload
+curl http://esp32-ip/api/stats | jq .
 ```
 
-### Monitor Serial Output
+### Configurar WiFi dinamicamente
 ```bash
-platformio device monitor
+curl -X POST http://esp32-ip/api/config/wifi \
+  -H "Content-Type: application/json" \
+  -d '{"ssid": "MinhaRede", "password": "minha_senha"}'
 ```
 
-### All in one (Build + Flash + Monitor)
+### WebSocket (eventos em tempo real)
 ```bash
-platformio run --target upload && platformio device monitor
+wscat -c ws://esp32-ip/ws
 ```
 
-## Usage
+## Eventos WebSocket
 
-### Serial Monitor Output (Expected)
-
-```
-[00:00:01] [INFO] System starting...
-[00:00:02] [INFO] Connecting to WiFi: YOUR_NETWORK
-[00:00:05] [INFO] WiFi connected! IP: 192.168.1.100
-[00:00:05] [INFO] WiFi Scanner initialized
-[00:00:05] [INFO] Setting up API routes...
-[00:00:05] [INFO] HTTP Server started
-[00:00:10] [INFO] WiFi scan started
-[00:00:11] [INFO] WiFi scan complete: 5 networks found
-[00:00:11] [INFO]   SSID: NETGEAR | RSSI: -42 dBm | Channel: 6 | Encryption: WPA2
-```
-
-### API Endpoints
-
-#### Health Check
-```bash
-curl http://192.168.1.100/
-# Response: OK
-```
-
-#### WiFi Networks
-```bash
-curl http://192.168.1.100/api/wifi
-```
-
-Response:
+### WIFI_UPDATE
 ```json
 {
-  "success": true,
-  "timestamp": 1740000000123,
-  "count": 3,
-  "data": [
-    {
-      "ssid": "NETGEAR",
-      "bssid": "00:11:22:33:44:55",
-      "rssi": -42,
-      "channel": 6,
-      "encryption": "WPA2"
-    }
-  ]
+  "event": "WIFI_UPDATE",
+  "timestamp": 1740000000,
+  "payload": {
+    "ssid": "NETGEAR",
+    "bssid": "00:11:22:33:44:55",
+    "rssi": -42,
+    "channel": 6,
+    "encryption": "WPA2"
+  }
 }
 ```
 
-## Troubleshooting
-
-### Port Not Recognized
-- Check USB driver (CH340 or FTDI)
-- Try different USB cable
-- Update platformio.ini `monitor_port`
-
-### WiFi Connection Failed
-- Verify SSID and password in `config.h`
-- Check signal strength (move ESP32 closer to router)
-- Verify network doesn't have hidden SSID (currently not supported)
-
-### No Serial Output
-- Verify baud rate is 115200 in `config.h`
-- Check monitor_port in `platformio.ini`
-- Try: `platformio device monitor --port /dev/ttyUSB0 --baud 115200`
-
-### Compilation Fails
-```bash
-platformio run clean
-platformio run
+### BLE_UPDATE
+```json
+{
+  "event": "BLE_UPDATE",
+  "timestamp": 1740000000,
+  "payload": {
+    "name": "Galaxy Buds",
+    "mac": "11:22:33:44:55:66",
+    "rssi": -61,
+    "uuid": "180D"
+  }
+}
 ```
 
-## Project Structure
+## Build e Flash
+
+```bash
+# Compilar
+platformio run
+
+# Flash no ESP32
+platformio run --target upload
+
+# Monitor serial
+platformio device monitor
+```
+
+## Configuração
+
+Edite `src/config.h` para definir:
+
+- `WIFI_SSID` / `WIFI_PASSWORD` — rede padrão (usada apenas se NVS vazia)
+- `API_PORT` — porta do servidor HTTP
+- `WIFI_SCAN_INTERVAL` — intervalo entre scans WiFi (ms)
+- `BLE_SCAN_INTERVAL` — intervalo entre scans BLE (ms)
+- `WATCHDOG_TIMEOUT_SEC` — timeout do watchdog (segundos)
+
+Após o primeiro boot, a configuração WiFi pode ser alterada via API e persiste na NVS.
+
+## Estrutura do Projeto
 
 ```
 firmware/
-├── src/
-│   ├── main.cpp                  # Entry point and main loop
-│   ├── config.h                  # Configuration constants
-│   ├── logger.h/cpp              # Serial logging
-│   ├── wifi_scanner.h/cpp        # WiFi scanning logic
-│   ├── api_routes.h/cpp          # HTTP route handlers
-│   ├── models/
-│   │   └── wifi_network.h        # WifiNetwork struct
-│   └── utils/
-│       └── json_helper.h/cpp     # JSON serialization
-├── include/                       # Project headers (if needed)
-├── lib/                           # Local libraries
-├── platformio.ini                 # Build configuration
-└── README.md                      # This file
+├── platformio.ini
+├── README.md
+└── src/
+    ├── main.cpp
+    ├── config.h
+    ├── logger.h/cpp
+    ├── wifi_scanner.h/cpp
+    ├── ble_scanner.h/cpp
+    ├── api_routes.h/cpp
+    ├── websocket.h/cpp
+    ├── models/
+    │   ├── wifi_network.h
+    │   ├── ble_device.h
+    │   └── stats.h
+    ├── services/
+    │   ├── wifi_service.h/cpp
+    │   ├── ble_service.h/cpp
+    │   └── stats_service.h/cpp
+    └── utils/
+        └── json_helper.h/cpp
 ```
 
-## Next Phase
+## Requisitos
 
-Phase 2 will add:
-- WebSocket server for real-time events
-- Complete REST API with stats endpoint
-- Enhanced logging system
-- WiFi network caching
-
-## References
-
-- [ESP32 Arduino Core](https://github.com/espressif/arduino-esp32)
-- [PlatformIO Docs](https://docs.platformio.org/)
-- [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer)
-- [ArduinoJson](https://arduinojson.org/)
+- ESP32 Dev Kit
+- PlatformIO (VS Code extension ou CLI)
+- Cabo USB para programação
