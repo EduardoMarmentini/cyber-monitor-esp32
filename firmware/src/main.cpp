@@ -2,7 +2,6 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <ESPAsyncWebServer.h>
-#include <Preferences.h>
 #include "esp_task_wdt.h"
 
 #include "config.h"
@@ -12,39 +11,26 @@
 #include "websocket.h"
 #include "services/wifi_service.h"
 #include "services/stats_service.h"
-#include "services/ble_service.h"
 
 AsyncWebServer server(API_PORT);
 
 unsigned long lastWifiScanTime = 0;
-unsigned long lastBleScanTime = 0;
 unsigned long lastReconnectAttempt = 0;
 
 void loadWifiConfig() {
-    Preferences prefs;
-    if (!prefs.begin(NVS_NAMESPACE, true)) {
-        LOG_WARN("Failed to open NVS, using default config");
-        WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-        return;
-    }
-
-    String ssid = prefs.getString(NVS_KEY_SSID, "");
-    String password = prefs.getString(NVS_KEY_PASSWORD, "");
-    prefs.end();
-
     WiFi.mode(WIFI_STA);
+    LOG_INFO("Using WiFi config from config.h: %s", WIFI_SSID);
 
-    if (ssid.length() > 0) {
-        LOG_INFO("WiFi config loaded from NVS: %s", ssid.c_str());
-        WiFi.begin(ssid.c_str(), password.c_str());
+    if (strlen(WIFI_PASSWORD) == 0) {
+        WiFi.begin(WIFI_SSID);
     } else {
-        LOG_INFO("Using default WiFi config from config.h");
         WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     }
 }
 
 void setupWiFi() {
     LOG_INFO("Connecting to WiFi...");
+    esp_task_wdt_reset();
 
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < WIFI_CONNECT_RETRIES) {
@@ -53,15 +39,18 @@ void setupWiFi() {
         esp_task_wdt_reset();
         LOG_INFO("Connecting... (attempt %d/%d)", attempts, WIFI_CONNECT_RETRIES);
     }
+    esp_task_wdt_reset();
 
     if (WiFi.status() == WL_CONNECTED) {
         LOG_INFO("WiFi connected! IP: %s", WiFi.localIP().toString().c_str());
+        LOG_INFO("Trying to start mDNS...");
 
         if (MDNS.begin(MDNS_HOSTNAME)) {
             MDNS.addService("http", "tcp", API_PORT);
             LOG_INFO("mDNS responder started: http://%s.local", MDNS_HOSTNAME);
+            LOG_INFO("mDNS setup SUCCESS!");
         } else {
-            LOG_WARN("mDNS setup failed");
+            LOG_ERROR("mDNS setup FAILED - will use IP instead: http://%s:8080", WiFi.localIP().toString().c_str());
         }
     } else {
         LOG_ERROR("WiFi connection failed after %d attempts", WIFI_CONNECT_RETRIES);
@@ -70,16 +59,28 @@ void setupWiFi() {
 
 void setupServer() {
     LOG_INFO("Initializing HTTP Server on port %d", API_PORT);
+    esp_task_wdt_reset();
 
     ApiRoutes::begin(server);
 
     server.onNotFound([](AsyncWebServerRequest* request) {
+        if (request->method() == HTTP_OPTIONS) {
+            AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "");
+            response->addHeader("Access-Control-Allow-Origin", "*");
+            response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+            response->addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+            request->send(response);
+            return;
+        }
         LOG_WARN("404 - %s", request->url().c_str());
-        request->send(404, "application/json", "{\"error\":\"Not Found\"}");
+        AsyncWebServerResponse *response = request->beginResponse(404, "application/json", "{\"error\":\"Not Found\"}");
+        response->addHeader("Access-Control-Allow-Origin", "*");
+        request->send(response);
     });
 
     server.begin();
-    LOG_INFO("HTTP Server started");
+    esp_task_wdt_reset();
+    LOG_INFO("HTTP Server started successfully on port %d", API_PORT);
 }
 
 void initWatchdog() {
@@ -90,7 +91,7 @@ void initWatchdog() {
 
 void setup() {
     Serial.begin(SERIAL_BAUD_RATE);
-    delay(1000);
+    delay(2000);
 
     Logger::begin();
     Logger::setLevel(LOG_LEVEL_INFO);
@@ -98,21 +99,31 @@ void setup() {
     LOG_INFO("System starting...");
 
     initWatchdog();
+    esp_task_wdt_reset();
 
     loadWifiConfig();
     setupWiFi();
+    esp_task_wdt_reset();
 
     WifiScanner::begin();
+    esp_task_wdt_reset();
+    
+    delay(500);
+    
     StatsService::begin();
+    esp_task_wdt_reset();
+    
     setupServer();
+    esp_task_wdt_reset();
+    
     WebSocketServer::begin(server);
+    esp_task_wdt_reset();
+    
     WifiService::begin();
-    BleService::getInstance().init();
-
-    BleService::getInstance().onNewDevice([](const BleDevice& device) {
-        WebSocketServer::broadcastBleEvent("BLE_UPDATE", device);
-    });
-
+    esp_task_wdt_reset();
+    
+    delay(1000);
+    
     WifiScanner::onScanComplete([](const std::vector<WifiNetwork>& networks) {
         WifiService::update();
     });
@@ -122,9 +133,10 @@ void setup() {
     });
 
     lastWifiScanTime = millis();
-    lastBleScanTime = millis();
+    lastReconnectAttempt = millis();
 
     LOG_INFO("Setup complete. Entering main loop...");
+    esp_task_wdt_reset();
 }
 
 void loop() {
@@ -135,11 +147,7 @@ void loop() {
     if (currentTime - lastWifiScanTime >= WIFI_SCAN_INTERVAL) {
         WifiScanner::scan();
         lastWifiScanTime = currentTime;
-    }
-
-    if (currentTime - lastBleScanTime >= BLE_SCAN_INTERVAL) {
-        BleService::getInstance().scan();
-        lastBleScanTime = currentTime;
+        esp_task_wdt_reset();
     }
 
     if (WiFi.status() != WL_CONNECTED) {

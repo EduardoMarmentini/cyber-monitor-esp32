@@ -1,7 +1,7 @@
 #pragma once
 
-#define WIFI_SSID "ACADEMICOS"
-#define WIFI_PASSWORD ""
+#define WIFI_SSID "Marmentini"
+#define WIFI_PASSWORD "EaDb@1728"
 #define WIFI_CONNECT_TIMEOUT 10000
 #define WIFI_CONNECT_RETRIES 10
 #define WIFI_RETRY_INTERVAL 500
@@ -17,10 +17,6 @@
 
 #define SERIAL_BAUD_RATE 115200
 
-#define WATCHDOG_TIMEOUT_SEC 10
+#define WATCHDOG_TIMEOUT_SEC 30
 
 #define MDNS_HOSTNAME "esp32"
-
-#define NVS_NAMESPACE "wifi"
-#define NVS_KEY_SSID "ssid"
-#define NVS_KEY_PASSWORD "password"

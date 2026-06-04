@@ -1,6 +1,7 @@
 #include <WiFi.h>
 #include "wifi_scanner.h"
 #include "logger.h"
+#include "esp_task_wdt.h"
 
 std::vector<WifiNetwork> WifiScanner::networks;
 bool WifiScanner::scanning = false;
@@ -13,6 +14,7 @@ void WifiScanner::begin() {
     // melhora estabilidade do scan
     WiFi.mode(WIFI_STA);
     WiFi.disconnect(false, false);
+    delay(100);
 
     // potência máxima
     WiFi.setTxPower(WIFI_POWER_19_5dBm);
@@ -26,6 +28,7 @@ void WifiScanner::scan() {
     scanning = true;
 
     LOG_DEBUG("Starting WiFi scan...");
+    esp_task_wdt_reset();
 
     // scan síncrono mais estável
     int n = WiFi.scanNetworks(
@@ -34,6 +37,7 @@ void WifiScanner::scan() {
     );
 
     networks.clear();
+    esp_task_wdt_reset();
 
     if (n <= 0) {
         LOG_WARN("No WiFi networks found");
@@ -41,6 +45,7 @@ void WifiScanner::scan() {
         LOG_INFO("%d WiFi networks found", n);
 
         for (int i = 0; i < n; i++) {
+            esp_task_wdt_reset();
 
             // ignora sinal muito fraco
             if (WiFi.RSSI(i) < -95) {
@@ -109,6 +114,7 @@ void WifiScanner::scan() {
     }
 
     WiFi.scanDelete();
+    esp_task_wdt_reset();
 
     lastScanTime = millis();
     scanning = false;

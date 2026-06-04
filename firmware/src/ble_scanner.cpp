@@ -49,9 +49,14 @@ void BleScanner::init() {
     }
 
     LOG_INFO("Initializing BLE...");
-    BLEDevice::init("ESP32_Cyber_Monitor");
-    initialized = true;
-    LOG_INFO("BLE initialized successfully");
+    try {
+        BLEDevice::init("ESP32_Cyber_Monitor");
+        initialized = true;
+        LOG_INFO("BLE initialized successfully");
+    } catch (const std::exception& e) {
+        LOG_ERROR("BLE initialization failed: %s", e.what());
+        initialized = false;
+    }
 }
 
 std::vector<BleDevice> BleScanner::scan(int durationSeconds) {
@@ -66,21 +71,27 @@ std::vector<BleDevice> BleScanner::scan(int durationSeconds) {
     LOG_INFO("Starting BLE scan for %d seconds...", durationSeconds);
     scannedDevices.clear();
 
-    BLEScan* pBLEScan = BLEDevice::getScan();
-    if (pBLEScan == nullptr) {
-        LOG_ERROR("Failed to get BLE scan object");
-        return std::vector<BleDevice>();
+    try {
+        BLEScan* pBLEScan = BLEDevice::getScan();
+        if (pBLEScan == nullptr) {
+            LOG_ERROR("Failed to get BLE scan object");
+            return std::vector<BleDevice>();
+        }
+
+        // Use static callback to avoid memory leak
+        static MyAdvertisedDeviceCallbacks callbacks;
+        pBLEScan->setAdvertisedDeviceCallbacks(&callbacks);
+        pBLEScan->setActiveScan(true);
+        pBLEScan->setInterval(100);
+        pBLEScan->setWindow(99);
+
+        BLEScanResults scanResults = pBLEScan->start(durationSeconds, false);
+        pBLEScan->clearResults();
+
+        LOG_INFO("BLE scan complete: %d devices found", scannedDevices.size());
+    } catch (const std::exception& e) {
+        LOG_ERROR("BLE scan failed: %s", e.what());
     }
-
-    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-    pBLEScan->setActiveScan(true);
-    pBLEScan->setInterval(100);
-    pBLEScan->setWindow(99);
-
-    BLEScanResults scanResults = pBLEScan->start(durationSeconds, false);
-    pBLEScan->clearResults();
-
-    LOG_INFO("BLE scan complete: %d devices found", scannedDevices.size());
 
     return scannedDevices;
 }
